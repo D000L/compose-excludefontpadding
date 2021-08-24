@@ -1,5 +1,7 @@
 package com.doool.exclude_font_padding
 
+import android.graphics.Typeface
+import android.text.TextPaint
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.Text
@@ -8,24 +10,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.AndroidPaint
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontLoader
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.debugInspectorInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.*
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontListFontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.resolveDefaults
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
-import androidx.core.content.res.ResourcesCompat
 
 @Composable
 fun Text(
@@ -127,35 +131,39 @@ fun Modifier.excludeFontPadding(style: TextStyle): Modifier = composed(debugInsp
 	name = "removeFontPadding"
 	properties["style"] = style
 }) {
-	val fontFamily = style.fontFamily
-
-	val context = LocalContext.current
 	val density = LocalDensity.current
+	val fontLoader = LocalFontLoader.current
 
-	val (topPadding, bottomPadding) = remember {
-		val fontResId = if (fontFamily is FontListFontFamily) {
-			(fontFamily.fonts.firstOrNull { it.weight == style.fontWeight } as? ResourceFont)?.resId
-		} else null
+	val (topPadding, bottomPadding) = remember(style) {
+		val fontFamily = style.fontFamily
+		if (fontFamily !is FontListFontFamily) Pair(0, 0)
+		else {
+			val font = fontFamily.fonts.firstOrNull { it.weight == style.fontWeight }
+			val typeface = if (font != null) fontLoader.load(font) as? Typeface else null
 
-		AndroidPaint().asFrameworkPaint().run {
-			if (fontResId != null) typeface = ResourcesCompat.getFont(context, fontResId)
-			textSize = density.run { style.fontSize.toPx() }
-			Pair(fontMetrics.ascent - fontMetrics.top, fontMetrics.bottom - fontMetrics.descent)
+			TextPaint().run {
+				this.typeface = typeface
+				textSize = density.run { style.fontSize.toPx() }
+				Pair(fontMetrics.ascent - fontMetrics.top, fontMetrics.bottom - fontMetrics.descent)
+			}
 		}
 	}
 
-    Modifier
-        .clip(RectangleShape)
-        .layout { measurable, constraints ->
-            val maxHeight = constraints.maxHeight + topPadding.toInt() + bottomPadding.toInt()
-            val placeable =
-                measurable.measure(constraints = constraints.copy(maxHeight = maxHeight))
+	Modifier
+		.clip(RectangleShape)
+		.layout { measurable, constraints ->
+			val maxHeight =
+				if (constraints.maxHeight == Constraints.Infinity) constraints.maxHeight
+				else constraints.maxHeight + topPadding.toInt() + bottomPadding.toInt()
 
-            layout(
-                placeable.width,
-                placeable.height - topPadding.toInt() - bottomPadding.toInt()
-            ) {
-                placeable.place(0, -topPadding.toInt())
-            }
-        }
+			val placeable =
+				measurable.measure(constraints = constraints.copy(maxHeight = maxHeight))
+
+			layout(
+				placeable.width,
+				placeable.height - topPadding.toInt() - bottomPadding.toInt()
+			) {
+				placeable.place(0, -topPadding.toInt())
+			}
+		}
 }
