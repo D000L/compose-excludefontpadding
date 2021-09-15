@@ -113,7 +113,6 @@ fun DefaultText(text: String, fontSize: TextUnit) {
     Text(
         modifier = Modifier.background(Color.Yellow),
         text = text,
-        fontFamily = Noto,
         fontSize = fontSize,
     )
 }
@@ -124,7 +123,6 @@ fun ExcludeFontPaddingText(text: String, fontSize: TextUnit) {
         modifier = Modifier.background(Color.Yellow),
         text = text,
         includeFontPadding = false,
-        fontFamily = Noto,
         fontSize = fontSize
     )
 }

@@ -5,8 +5,7 @@ import android.text.TextPaint
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.LocalTextStyle
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
@@ -52,6 +51,8 @@ fun Text(
 	onTextLayout: (TextLayoutResult) -> Unit = {},
 	style: TextStyle = LocalTextStyle.current
 ) {
+	var isOverflow by remember { mutableStateOf(false) }
+
 	Text(
 		text,
 		if (!includeFontPadding) {
@@ -65,7 +66,7 @@ fun Text(
 					)
 				), LocalLayoutDirection.current
 			)
-			modifier.excludeFontPadding(mergedStyle)
+			modifier.excludeFontPadding(mergedStyle, isOverflow)
 		} else modifier,
 		color,
 		fontSize,
@@ -80,7 +81,10 @@ fun Text(
 		softWrap,
 		maxLines,
 		inlineContent,
-		onTextLayout,
+		{
+			isOverflow = it.didOverflowHeight
+			onTextLayout(it)
+		},
 		style
 	)
 }
@@ -127,7 +131,8 @@ fun Text(
 	)
 }
 
-fun Modifier.excludeFontPadding(style: TextStyle): Modifier = composed(debugInspectorInfo {
+
+fun Modifier.excludeFontPadding(style: TextStyle, isOverflow: Boolean): Modifier = composed(debugInspectorInfo {
 	name = "removeFontPadding"
 	properties["style"] = style
 }) {
@@ -154,14 +159,14 @@ fun Modifier.excludeFontPadding(style: TextStyle): Modifier = composed(debugInsp
 		.layout { measurable, constraints ->
 			val maxHeight =
 				if (constraints.maxHeight == Constraints.Infinity) constraints.maxHeight
-				else constraints.maxHeight + topPadding.toInt() + bottomPadding.toInt()
+				else constraints.maxHeight + topPadding.toInt() + if(!isOverflow) bottomPadding.toInt() else 0
 
 			val placeable =
 				measurable.measure(constraints = constraints.copy(maxHeight = maxHeight))
 
 			layout(
 				placeable.width,
-				placeable.height - topPadding.toInt() - bottomPadding.toInt()
+				placeable.height - topPadding.toInt() - if(!isOverflow) bottomPadding.toInt() else 0
 			) {
 				placeable.place(0, -topPadding.toInt())
 			}
