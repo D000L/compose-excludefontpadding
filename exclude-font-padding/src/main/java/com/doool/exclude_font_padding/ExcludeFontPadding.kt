@@ -82,7 +82,7 @@ fun Text(
 		maxLines,
 		inlineContent,
 		{
-			isOverflow = it.didOverflowHeight
+			isOverflow = overflow != TextOverflow.Ellipsis && it.didOverflowHeight
 			onTextLayout(it)
 		},
 		style
