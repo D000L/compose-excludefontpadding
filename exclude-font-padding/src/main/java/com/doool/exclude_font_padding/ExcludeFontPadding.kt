@@ -132,43 +132,54 @@ fun Text(
 }
 
 
-fun Modifier.excludeFontPadding(style: TextStyle, isOverflow: Boolean): Modifier = composed(debugInspectorInfo {
-	name = "removeFontPadding"
-	properties["style"] = style
-}) {
-	val density = LocalDensity.current
-	val fontLoader = LocalFontLoader.current
+fun Modifier.excludeFontPadding(style: TextStyle, isOverflow: Boolean): Modifier =
+	composed(debugInspectorInfo {
+		name = "removeFontPadding"
+		properties["style"] = style
+	}) {
+		val density = LocalDensity.current
+		val fontLoader = LocalFontLoader.current
 
-	val (topPadding, bottomPadding) = remember(style) {
-		val fontFamily = style.fontFamily
-		if (fontFamily !is FontListFontFamily) Pair(0, 0)
-		else {
-			val font = fontFamily.fonts.firstOrNull { it.weight == style.fontWeight }
-			val typeface = if (font != null) fontLoader.load(font) as? Typeface else null
+		val (topPadding, bottomPadding) = remember(style) {
+			val fontFamily = style.fontFamily
+			if (fontFamily !is FontListFontFamily) Pair(0, 0)
+			else {
+				val font = fontFamily.fonts.firstOrNull { it.weight == style.fontWeight }
+				val typeface = if (font != null) fontLoader.load(font) as? Typeface else null
 
-			TextPaint().run {
-				this.typeface = typeface
-				textSize = density.run { style.fontSize.toPx() }
-				Pair(fontMetrics.ascent - fontMetrics.top, fontMetrics.bottom - fontMetrics.descent)
+				TextPaint().run {
+					this.typeface = typeface
+					textSize = density.run { style.fontSize.toPx() }
+					Pair(
+						fontMetrics.ascent - fontMetrics.top,
+						fontMetrics.bottom - fontMetrics.descent
+					)
+				}
 			}
 		}
+
+		Modifier
+			.clip(RectangleShape)
+			.layout { measurable, constraints ->
+				val maxHeight =
+					if (constraints.maxHeight == Constraints.Infinity) constraints.maxHeight
+					else constraints.maxHeight + topPadding.toInt() + if (!isOverflow) bottomPadding.toInt() else 0
+
+				val placeable =
+					measurable.measure(
+						constraints = constraints.copy(
+							maxHeight = Math.max(
+								constraints.minHeight,
+								maxHeight
+							)
+						)
+					)
+
+				layout(
+					placeable.width,
+					placeable.height - topPadding.toInt() - if (!isOverflow) bottomPadding.toInt() else 0
+				) {
+					placeable.place(0, -topPadding.toInt())
+				}
+			}
 	}
-
-	Modifier
-		.clip(RectangleShape)
-		.layout { measurable, constraints ->
-			val maxHeight =
-				if (constraints.maxHeight == Constraints.Infinity) constraints.maxHeight
-				else constraints.maxHeight + topPadding.toInt() + if(!isOverflow) bottomPadding.toInt() else 0
-
-			val placeable =
-				measurable.measure(constraints = constraints.copy(maxHeight = maxHeight))
-
-			layout(
-				placeable.width,
-				placeable.height - topPadding.toInt() - if(!isOverflow) bottomPadding.toInt() else 0
-			) {
-				placeable.place(0, -topPadding.toInt())
-			}
-		}
-}
